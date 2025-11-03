@@ -1,15 +1,15 @@
 {
-  "name": "image-analyzer-ai",
-  "version": "1.0.0",
-  "description": "Analizador de imágenes con IA para Shopify",
-  "scripts": {
-    "build": "echo 'build complete'",
-    "start": "node api/analyzeImage.js"
-  },
-  "dependencies": {
-    "@anthropic-ai/sdk": "^0.24.3"
-  },
-  "engines": {
-    "node": "18.x"
+  "buildCommand": "npm install",
+  "outputDirectory": "public",
+  "rewrites": [
+    {
+      "source": "/(.*)",
+      "destination": "/index.html"
+    }
+  ],
+  "functions": {
+    "api/**/*.js": {
+      "runtime": "nodejs18.x"
+    }
   }
 }
