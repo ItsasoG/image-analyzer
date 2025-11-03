@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Análisis de Imágenes con IA</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body style="margin: 0; padding: 0; background: linear-gradient(to bottom right, #111827, #000000);">
+    <div id="app"></div>
+
+    <script>
+        // ⚠️ CAMBIAR ESTO A TU URL DE VERCEL
+        const VERCEL_API_URL = 'https://image-analyzer-gamma.vercel.app/api/analyzeImage';
+
+        let currentMode = null;
+        let apiKey = '';
+        let images = [];
+
+        function render() {
+            const app = document.getElementById('app');
+            
+            if (!apiKey) {
+                app.innerHTML = `
+                    <div style="min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 2rem;">
+                        <div style="max-width: 56rem; width: 100%;">
+                            <div style="text-align: center; margin-bottom: 3rem;">
+                                <h1 style="font-size: 3rem; font-weight: bold; color: white; margin-bottom: 1rem;">
+                                    Análisis de Imágenes con IA
+                                </h1>
+                                <p style="color: #9ca3af; font-size: 1.125rem;">
+                                    Sube tus imágenes y déjate llevar por la magia de la IA
+                                </p>
+                            </div>
+
+                            <div style="margin-bottom: 2rem; background: rgba(30, 58, 138, 0.3); border: 2px solid #3b82f6; border-radius: 0.5rem; padding: 1.5rem;">
+                                <h3 style="color: #93c5fd; font-weight: 600; margin-bottom: 0.5rem;">Configuración Necesaria</h3>
+                                <p style="color: #93c5fd; font-size: 0.875rem; margin-bottom: 1rem;">
+                                    Para usar esta herramienta, necesitas una API key de Anthropic (es gratis).
+                                    <a href="https://console.anthropic.com/keys" target="_blank" rel="noopener noreferrer" style="color: #60a5fa; text-decoration: underline;">
+                                        Obtén tu API key aquí →
+                                    </a>
+                                </p>
+                                <input 
+                                    type="password" 
+                                    id="api-key-input" 
+                                    placeholder="Ingresa tu API key de Anthropic aquí" 
+                                    style="width: 100%; padding: 0.75rem; background: #1f2937; color: white; border: 1px solid #374151; border-radius: 0.375rem; font-size: 1rem;"
+                                    onchange="setApiKey(this.value)"
+                                />
+                            </div>
+                        </div>
+                    </div>
+                `;
+                return;
+            }
+
+            if (!currentMode) {
+                app.innerHTML = `
+                    <div style="min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 2rem;">
+                        <div style="max-width: 56rem; width: 100%;">
+                            <div style="text-align: center; margin-bottom: 3rem;">
+                                <h1 style="font-size: 3rem; font-weight: bold; color: white; margin-bottom: 1rem;">
+                                    Análisis de Imágenes con IA
+                                </h1>
+                            </div>
+
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem;">
+                                <button 
+                                    onclick="setMode('ecommerce')" 
+                                    style="background: linear-gradient(135deg, #2563eb, #1e40af); color: white; padding: 2rem; border-radius: 0.5rem; border: none; cursor: pointer; font-weight: 600; font-size: 1.125rem; transition: all 0.3s;"
+                                    onmouseover="this.style.transform='scale(1.05)'"
+                                    onmouseout="this.style.transform='scale(1)'"
+                                >
+                                    🛍️ E-commerce
+                                </button>
+                                <button 
+                                    onclick="setMode('editorial')" 
+                                    style="background: linear-gradient(135deg, #9333ea, #6b21a8); color: white; padding: 2rem; border-radius: 0.5rem; border: none; cursor: pointer; font-weight: 600; font-size: 1.125rem; transition: all 0.3s;"
+                                    onmouseover="this.style.transform='scale(1.05)'"
+                                    onmouseout="this.style.transform='scale(1)'"
+                                >
+                                    📸 Editorial
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                return;
+            }
+
+            let imagesHtml = '';
+            if (images.length === 0) {
+                imagesHtml = '<div style="text-align: center; padding: 3rem; color: #9ca3af; font-size: 1.125rem;">Sube imágenes para que la IA las analice</div>';
+            } else {
+                imagesHtml = images.map(img => `
+                    <div style="background: #1f2937; border-radius: 0.5rem; overflow: hidden; box-shadow: 0 20px 25px rgba(0, 0, 0, 0.5); margin-bottom: 2rem;">
+                        <div style="display: flex; flex-direction: row; gap: 1.5rem; padding: 1.5rem;">
+                            <div style="width: 33.333%; flex-shrink: 0;">
+                                <img src="${img.src}" alt="${img.fileName}" style="width: 100%; height: 16rem; object-fit: cover; border-radius: 0.5rem;" />
+                                <p style="color: #9ca3af; font-size: 0.875rem; margin-top: 0.75rem; word-break: break-word;">${img.fileName}</p>
+                            </div>
+                            <div style="flex: 1; display: flex; flex-direction: column; justify-content: space-between;">
+                                <div>
+                                    <h3 style="color: white; font-weight: 600; margin-bottom: 0.75rem;">Descripción (IA):</h3>
+                                    ${img.loading ? `
+                                        <div style="display: flex; align-items: center; gap: 0.75rem;">
+                                            <div style="display: inline-block; width: 1.25rem; height: 1.25rem; border: 2px solid #3b82f6; border-top-color: transparent; border-radius: 50%; animation: spin 1s linear infinite;"></div>
+                                            <p style="color: #9ca3af;">Analizando con IA...</p>
+                                        </div>
+                                    ` : img.error ? `
+                                        <div style="background: rgba(159, 18, 57, 0.3); border: 1px solid #f87171; border-radius: 0.375rem; padding: 1rem;">
+                                            <p style="color: #fca5a5; font-size: 0.875rem;">${img.error}</p>
+                                        </div>
+                                    ` : `
+                                        <p style="color: #d1d5db; font-size: 0.875rem; line-height: 1.5; background: rgba(55, 65, 81, 0.5); padding: 1rem; border-radius: 0.375rem; max-height: 12rem; overflow-y: auto; white-space: pre-wrap;">${img.description}</p>
+                                    `}
+                                </div>
+                                ${!img.loading && !img.error ? `
+                                    <div style="display: flex; gap: 0.75rem; margin-top: 1rem;">
+                                        <button style="flex: 1; padding: 0.5rem 1rem; background: #2563eb; color: white; border: none; border-radius: 0.375rem; cursor: pointer; font-weight: 600;" onclick="copyToClipboard(\`${img.description.replace(/`/g, '\\`')}\`)">
+                                            📋 Copiar
+                                        </button>
+                                        <button style="padding: 0.5rem 1rem; background: #dc2626; color: white; border: none; border-radius: 0.375rem; cursor: pointer; font-weight: 600;" onclick="removeImage(${img.id})">
+                                            🗑️
+                                        </button>
+                                    </div>
+                                ` : ''}
+                            </div>
+                        </div>
+                    </div>
+                `).join('');
+            }
+
+            app.innerHTML = `
+                <div style="min-height: 100vh; background: linear-gradient(to bottom right, #111827, #000000); padding: 2rem;">
+                    <div style="max-width: 56rem; margin: 0 auto;">
+                        <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 2rem;">
+                            <div>
+                                <h1 style="font-size: 1.875rem; font-weight: bold; color: white; margin-bottom: 0.5rem;">
+                                    ${currentMode === 'ecommerce' ? '🛍️ E-commerce' : '📸 Editorial'}
+                                </h1>
+                                <p style="color: #9ca3af;">IA analizando y describiendo tus imágenes</p>
+                            </div>
+                            <button onclick="resetApp()" style="padding: 0.5rem 1rem; background: #4b5563; color: white; border: none; border-radius: 0.375rem; cursor: pointer;">
+                                Cambiar modo
+                            </button>
+                        </div>
+
+                        <label style="display: block; cursor: pointer; margin-bottom: 2rem;">
+                            <div style="border: 2px dashed #4b5563; border-radius: 0.5rem; padding: 2rem; text-align: center; background: rgba(31, 41, 55, 0.5);">
+                                <p style="color: white; font-size: 1.125rem; font-weight: 600; margin-bottom: 0.5rem;">
+                                    📁 Arrastra imágenes aquí o haz clic
+                                </p>
+                                <p style="color: #9ca3af; font-size: 0.875rem;">
+                                    PNG, JPG, WebP - La IA analizará automáticamente
+                                </p>
+                            </div>
+                            <input 
+                                type="file" 
+                                multiple 
+                                accept="image/*" 
+                                style="display: none;"
+                                onchange="handleFileSelect(event)"
+                            />
+                        </label>
+
+                        <div>${imagesHtml}</div>
+                    </div>
+                </div>
+
+                <style>
+                    @keyframes spin {
+                        to { transform: rotate(360deg); }
+                    }
+                </style>
+            `;
+        }
+
+        function setApiKey(value) {
+            apiKey = value.trim();
+            render();
+        }
+
+        function setMode(mode) {
+            currentMode = mode;
+            render();
+        }
+
+        function resetApp() {
+            currentMode = null;
+            images = [];
+            render();
+        }
+
+        function handleFileSelect(e) {
+            const files = Array.from(e.target.files);
+            files.forEach(file => {
+                const reader = new FileReader();
+                reader.onload = (event) => {
+                    const imageData = {
+                        id: Date.now() + Math.random(),
+                        src: event.target.result,
+                        fileName: file.name,
+                        description: '',
+                        loading: true,
+                        error: null,
+                    };
+                    images.push(imageData);
+                    render();
+                    generateDescription(imageData.id, event.target.result, file.type);
+                };
+                reader.readAsDataURL(file);
+            });
+        }
+
+        async function generateDescription(imageId, imageSrc, mimeType) {
+            const imageData = images.find(img => img.id === imageId);
+            if (!imageData) return;
+
+            try {
+                const base64Image = imageSrc.split(',')[1];
+
+                const response = await fetch(VERCEL_API_URL, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        imageBase64: base64Image,
+                        imageType: mimeType,
+                        mode: currentMode,
+                        apiKey: apiKey,
+                    }),
+                });
+
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.error || `Error ${response.status}`);
+                }
+
+                const data = await response.json();
+                imageData.description = data.description;
+                imageData.loading = false;
+                imageData.error = null;
+            } catch (error) {
+                console.error('Error:', error);
+                imageData.loading = false;
+                imageData.error = error.message || 'Error al generar descripción';
+            }
+
+            render();
+        }
+
+        function copyToClipboard(text) {
+            navigator.clipboard.writeText(text).then(() => {
+                alert('¡Descripción copiada al portapapeles!');
+            });
+        }
+
+        function removeImage(imageId) {
+            images = images.filter(img => img.id !== imageId);
+            render();
+        }
+
+        render();
+    </script>
+</body>
+</html>
