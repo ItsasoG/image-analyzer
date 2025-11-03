@@ -3,11 +3,13 @@
   "version": "1.0.0",
   "description": "Analizador de imágenes con IA para Shopify",
   "scripts": {
-    "dev": "vercel dev",
-    "build": "vercel build",
-    "start": "vercel start"
+    "build": "echo 'build complete'",
+    "start": "node api/analyzeImage.js"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.24.3"
+  },
+  "engines": {
+    "node": "18.x"
   }
 }
