@@ -1,0 +1,13 @@
+{
+  "name": "image-analyzer-ai",
+  "version": "1.0.0",
+  "description": "Analizador de imágenes con IA para Shopify",
+  "scripts": {
+    "dev": "vercel dev",
+    "build": "vercel build",
+    "start": "vercel start"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.24.3"
+  }
+}
